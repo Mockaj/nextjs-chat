@@ -39,3 +39,19 @@ export interface User extends Record<string, any> {
   password: string
   salt: string
 }
+
+export interface RelevantDoc {
+  law_nazev: string;
+  law_id: string;
+  law_year: string;
+  law_category: string;
+  law_date: string;
+  law_staleURL: string;
+  paragraph_cislo: string;
+  paragraph_zneni: string;
+}
+
+export interface ContextResponse {
+  relevant_docs: RelevantDoc[];
+}
+
