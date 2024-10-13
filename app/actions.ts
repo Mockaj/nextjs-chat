@@ -5,7 +5,22 @@ import { redirect } from 'next/navigation'
 import { kv } from '@vercel/kv'
 
 import { auth } from '@/auth'
-import { type Chat } from '@/lib/types'
+import {type Chat, ContextResponse, RelevantDoc} from '@/lib/types'
+import axios from "axios";
+
+export async function fetchRelevantDocs(query: string): Promise<RelevantDoc[]> {
+  const response = await axios.post<ContextResponse>(
+      'http://127.0.0.1:8000/api/v1/context?n=3',
+      { query },
+      {
+        auth: {
+          username: 'user1',
+          password: 'password2'
+        }
+      }
+  );
+  return response.data.relevant_docs;
+}
 
 export async function getChats(userId?: string | null) {
   const session = await auth()
@@ -170,3 +185,4 @@ export async function getMissingKeys() {
     .map(key => (process.env[key] ? '' : key))
     .filter(key => key !== '')
 }
+

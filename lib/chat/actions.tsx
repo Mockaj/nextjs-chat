@@ -11,7 +11,7 @@ import {
   createStreamableValue
 } from 'ai/rsc'
 import { openai } from '@ai-sdk/openai'
-
+import {RelevantDoc} from "@/lib/types";
 import {
   spinner,
   BotCard,
@@ -37,6 +37,7 @@ import { saveChat } from '@/app/actions'
 import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
+import {Dispatch, SetStateAction} from "react";
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -108,7 +109,7 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
   }
 }
 
-async function submitUserMessage(content: string) {
+export async function submitUserMessage(content: string) {
   'use server'
 
   const aiState = getMutableAIState<typeof AI>()
@@ -135,6 +136,7 @@ async function submitUserMessage(content: string) {
         }
       }
   );
+
 
   const relevantDocs = response.data.relevant_docs.map(doc => `- ${doc.paragraph_zneni}`).join('\n');
 
@@ -200,7 +202,8 @@ async function submitUserMessage(content: string) {
 
   return {
     id: nanoid(),
-    display: result.value
+    display: result.value,
+    relevantDocs: response.data.relevant_docs
   }
 }
 export type AIState = {
