@@ -1,7 +1,7 @@
 import 'server-only'
 
 import axios from 'axios';
-import { ContextResponse } from '@/lib/types';
+import {ContextResponse, RelevantDoc} from '@/lib/types';
 import {
   createAI,
   createStreamableUI,
@@ -11,7 +11,6 @@ import {
   createStreamableValue
 } from 'ai/rsc'
 import { openai } from '@ai-sdk/openai'
-import {RelevantDoc} from "@/lib/types";
 import {
   spinner,
   BotCard,
@@ -21,12 +20,8 @@ import {
   Purchase
 } from '@/components/stocks'
 
-import { z } from 'zod'
-import { EventsSkeleton } from '@/components/stocks/events-skeleton'
 import { Events } from '@/components/stocks/events'
-import { StocksSkeleton } from '@/components/stocks/stocks-skeleton'
 import { Stocks } from '@/components/stocks/stocks'
-import { StockSkeleton } from '@/components/stocks/stock-skeleton'
 import {
   formatNumber,
   runAsyncFnWithoutBlocking,
@@ -135,75 +130,115 @@ export async function submitUserMessage(content: string) {
           password: 'password2'
         }
       }
-  );
+  )
 
-
-  const relevantDocs = response.data.relevant_docs.map(doc => `- ${doc.paragraph_zneni}`).join('\n');
+  const relevantDocsText = response.data.relevant_docs
+      .map(doc => `§ ${doc.paragraph_cislo} zákona č. ${doc.law_id}/${doc.law_year} Sb.\n- ${doc.paragraph_zneni}\n`)
+      .join('\n')
 
   const prompt = `
     Context:
-    ${relevantDocs}
+    ${relevantDocsText}
 
     Question:
     ${content}
-  `;
+  `
 
-  let textStream: undefined | ReturnType<typeof createStreamableValue<string>>;
-  let textNode: undefined | React.ReactNode;
+  let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
+  let textNode: undefined | React.ReactNode
 
-  const result = await streamUI({
-    model: openai('gpt-4o-mini'),
-    initial: <SpinnerMessage />,
-    system: `\
-       You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
-       Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
-      "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`,
+  // Variable to accumulate the assistant's response content
+  let assistantContent = ''
+  let usedDocs: RelevantDoc[] = []
 
-    messages: [
-      ...aiState.get().messages.map((message: any) => ({
-        role: message.role,
-        content: message.content,
-        name: message.name
-      })),
-      {
-        role: 'user',
-        content: prompt // Using the prompt with enriched context
-      }
-    ],
-    text: ({ content, done, delta }) => {
-      if (!textStream) {
-        textStream = createStreamableValue('');
-        textNode = <BotMessage content={textStream.value} />
-      }
+  // Promise that resolves when streaming is complete
+  const streamComplete = new Promise<void>((resolve) => {
+    streamUI({
+      model: openai('gpt-4o-mini'),
+      initial: <SpinnerMessage />,
+      system: `\
+         You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
+         Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
+        "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`,
+      messages: [
+        ...aiState.get().messages.map((message: any) => ({
+          role: message.role,
+          content: message.content,
+          name: message.name
+        })),
+        {
+          role: 'user',
+          content: prompt // Using the prompt with enriched context
+        }
+      ],
+      text: ({ content, done, delta }) => {
+        if (!textStream) {
+          textStream = createStreamableValue('')
+          textNode = <BotMessage content={textStream.value} />
+        }
 
-      if (done) {
-        textStream.done();
-        aiState.done({
-          ...aiState.get(),
-          messages: [
-            ...aiState.get().messages,
-            {
-              id: nanoid(),
-              role: 'assistant',
-              content
+        if (delta) {
+          assistantContent += delta // Accumulate the assistant's response
+          textStream.update(delta)
+        }
+
+        if (done) {
+          textStream.done()
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: assistantContent // Use the full accumulated content
+              }
+            ]
+          })
+
+          // Now that the assistant's response is complete, check for references
+          for (const doc of response.data.relevant_docs) {
+            // Create a regex pattern allowing up to 20 characters between the paragraph number and the law reference
+            const pattern = new RegExp(
+                `§\\s*${doc.paragraph_cislo}.{0,20}?zákona\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
+                'i'
+            )
+
+            if (pattern.test(assistantContent)) {
+              // Ensure no duplicates
+              if (
+                  !usedDocs.some(
+                      d =>
+                          d.paragraph_cislo === doc.paragraph_cislo &&
+                          d.law_id === doc.law_id &&
+                          d.law_year === doc.law_year
+                  )
+              ) {
+                usedDocs.push(doc)
+              }
             }
-          ]
-        });
-      } else {
-        textStream.update(delta);
-      }
+          }
+          console.log('relevant', response.data.relevant_docs)
+          console.log('usedDocs', usedDocs)
 
-      return textNode;
-    },
-    tools: {
-      // Define tools and handlers here if required
-    }
-  });
+          resolve() // Resolve the promise when streaming is done
+        }
+
+        return textNode
+      },
+      tools: {
+        // Define tools and handlers here if required
+      }
+    })
+  })
+
+  // Wait for the streaming to complete
+  await streamComplete
 
   return {
     id: nanoid(),
-    display: result.value,
-    relevantDocs: response.data.relevant_docs
+    display: textNode,
+    relevantDocs: usedDocs
   }
 }
 export type AIState = {

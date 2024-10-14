@@ -71,6 +71,7 @@ export function PromptForm({
     setRelevantDocs(responseMessage.relevantDocs);
 
     setMessages((currentMessages) => [...currentMessages, responseMessage]);
+    console.log('Received relevantDocs:', responseMessage.relevantDocs);
   }
 
   return (
