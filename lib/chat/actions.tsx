@@ -157,7 +157,7 @@ export async function submitUserMessage(content: string) {
     system: `\
        You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
        Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
-      "podle zákona č. {law_id}/{law_year} Sb., {law_name}`,
+      "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`,
 
     messages: [
       ...aiState.get().messages.map((message: any) => ({
