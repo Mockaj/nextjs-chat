@@ -9,8 +9,10 @@ import {type Chat, ContextResponse, RelevantDoc} from '@/lib/types'
 import axios from "axios";
 
 export async function fetchRelevantDocs(query: string): Promise<RelevantDoc[]> {
+  const backendUrl = process.env.BACKEND;
+
   const response = await axios.post<ContextResponse>(
-      'http://127.0.0.1:8000/api/v1/context?n=3',
+      `${backendUrl}/api/v1/rag/context?n=5`,
       { query },
       {
         auth: {

@@ -121,16 +121,18 @@ export async function submitUserMessage(content: string) {
     ]
   })
 
+  const backendUrl = process.env.BACKEND;
+
   const response = await axios.post<ContextResponse>(
-      'http://127.0.0.1:8000/api/v1/context?n=3',
+      `${backendUrl}/api/v1/rag/context?n=5`,
       { query: content },
       {
         auth: {
           username: 'user1',
-          password: 'password2'
-        }
+          password: 'password2',
+        },
       }
-  )
+  );
 
   const relevantDocsText = response.data.relevant_docs
       .map(doc => `§ ${doc.paragraph_cislo} zákona č. ${doc.law_id}/${doc.law_year} Sb.\n- ${doc.paragraph_zneni}\n`)
@@ -218,8 +220,6 @@ export async function submitUserMessage(content: string) {
               }
             }
           }
-          console.log('relevant', response.data.relevant_docs)
-          console.log('usedDocs', usedDocs)
 
           resolve() // Resolve the promise when streaming is done
         }

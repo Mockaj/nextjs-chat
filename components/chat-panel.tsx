@@ -38,6 +38,29 @@ export function ChatPanel({
     const { submitUserMessage } = useActions()
     const [shareDialogOpen, setShareDialogOpen] = React.useState(false)
 
+    const exampleMessages = [
+        {
+            heading: 'Jak založit',
+            subheading: 'akciovou společnost?',
+            message: `Jak založit akciovou společnost?`
+        },
+        {
+            heading: 'Jaký trest hrozí mému klientovi',
+            subheading: 'za krádež věci v hodnotě 30 000 Kč? ',
+            message: 'Jaký trest hrozí mému klientovi za krádež věci v hodnotě 30 000 Kč? '
+        },
+        {
+            heading: 'Kolik je pro rok 2024',
+            subheading: 'existenční minimum?',
+            message: `Kolik je pro rok 2024 existenční minimum?`
+        },
+        {
+            heading: 'Jaké podmínky musím splnit pro',
+            subheading: `získání živnostenského oprávnění optometristy?`,
+            message: `Jaké podmínky musím splnit pro získání živnostenského oprávnění optometristy?`
+        }
+    ]
+
     const handleMessageSubmit = async (messageContent: string) => {
         const responseMessage = await submitUserMessage(messageContent);
 
@@ -55,34 +78,70 @@ export function ChatPanel({
             />
 
             <div className="mx-auto sm:max-w-2xl sm:px-4">
+                <div className="mb-4 grid grid-cols-2 gap-2 px-4 sm:px-0">
+                    {messages.length === 0 &&
+                        exampleMessages.map((example, index) => (
+                            <div
+                                key={example.heading}
+                                className={`cursor-pointer rounded-lg border bg-white p-4 hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900 ${
+                                    index > 1 && 'hidden md:block'
+                                }`}
+                                onClick={async () => {
+                                    setMessages(currentMessages => [
+                                        ...currentMessages,
+                                        {
+                                            id: nanoid(),
+                                            display: <UserMessage>{example.message}</UserMessage>
+                                        }
+                                    ])
+
+                                    const responseMessage = await submitUserMessage(
+                                        example.message
+                                    )
+
+                                    setMessages(currentMessages => [
+                                        ...currentMessages,
+                                        responseMessage
+                                    ])
+                                }}
+                            >
+                                <div className="text-sm font-semibold">{example.heading}</div>
+                                <div className="text-sm text-zinc-600">
+                                    {example.subheading}
+                                </div>
+                            </div>
+                        ))}
+                </div>
                 <PromptForm
                     input={input}
                     setInput={setInput}
                     setRelevantDocs={setRelevantDocs} // Pass setRelevantDocs to PromptForm
                 />
-                {messages?.length >= 2 ? (
-                    <div className="flex h-12 items-center justify-center">
-                        <div className="flex space-x-2">
-                            {id && title ? (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setShareDialogOpen(true)}
-                                    >
-                                        <IconShare className="mr-2" />
-                                        Share
-                                    </Button>
-                                    <ChatShareDialog
-                                        open={shareDialogOpen}
-                                        onOpenChange={setShareDialogOpen}
-                                        onCopy={() => setShareDialogOpen(false)}
-                                        shareChat={shareChat}
-                                        chat={{
-                                            id,
-                                            title,
-                                            messages: aiState.messages
-                                        }}
-                                    />
+
+            </div>
+            {messages?.length >= 2 ? (
+                <div className="flex h-12 items-center justify-center">
+                    <div className="flex space-x-2">
+                        {id && title ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShareDialogOpen(true)}
+                                >
+                                    <IconShare className="mr-2"/>
+                                    Share
+                                </Button>
+                                <ChatShareDialog
+                                    open={shareDialogOpen}
+                                    onOpenChange={setShareDialogOpen}
+                                    onCopy={() => setShareDialogOpen(false)}
+                                    shareChat={shareChat}
+                                    chat={{
+                                        id,
+                                        title,
+                                        messages: aiState.messages
+                                    }}
+                                />
                                 </>
                             ) : null}
                         </div>
@@ -92,6 +151,5 @@ export function ChatPanel({
                     <FooterText className="hidden sm:block" />
                 </div>
             </div>
-        </div>
     )
 }

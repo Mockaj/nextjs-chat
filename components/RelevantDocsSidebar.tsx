@@ -29,7 +29,7 @@ export function RelevantDocsSidebar({ relevantDocs }: RelevantDocsSidebarProps) 
     return (
         <div className="absolute right-0 inset-y-0 z-30 w-[300px] bg-white dark:bg-black border-l shadow-lg overflow-y-auto">
             <h3 className="p-4 border-b text-xl font-bold bg-gray-100 dark:bg-gray-800">
-                Relevant Documents
+                Použité zdroje
             </h3>
             <ul>
                 {relevantDocs.map((doc, index) => (
