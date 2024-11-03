@@ -127,7 +127,11 @@ export function PromptForm({
           tabIndex={0}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="min-h-[60px] w-full resize-none bg-transparent px-4 py-[1.3rem] focus-within:outline-none sm:text-sm"
+          className={`min-h-[60px] w-full resize-none bg-transparent px-4 py-[1.3rem] focus-within:outline-none sm:text-sm ${
+            isLoading
+              ? 'animate-placeholder-pulse placeholder:text-muted-foreground/70'
+              : 'placeholder:text-muted-foreground/50'
+          }`}
           autoFocus
           spellCheck={false}
           autoComplete="off"

@@ -188,3 +188,29 @@ export async function getMissingKeys() {
     .filter(key => key !== '')
 }
 
+export async function seedLaw(url: string) {
+  const backendUrl = process.env.BACKEND;
+  
+  try {
+    const response = await axios.post(
+      `${backendUrl}/api/v1/rag/seed`,
+      { url },
+      {
+        auth: {
+          username: 'user1',
+          password: 'password2'
+        }
+      }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Failed to seed law' 
+      };
+    }
+    return { success: false, error: 'Failed to seed law' };
+  }
+}
+
