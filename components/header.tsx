@@ -56,11 +56,6 @@ export function Header() {
           <UserOrLogin />
         </React.Suspense>
       </div>
-      <div className="flex items-center">
-        <Button variant="link" asChild>
-          <Link href="/law">Přidat zákon</Link>
-        </Button>
-      </div>
       {/* Center Section: ADVOKÁTEK Heading */}
       <div className="flex items-center justify-center">
         <Link href="/" className="hover:opacity-80 transition-opacity">
