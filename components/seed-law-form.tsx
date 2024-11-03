@@ -11,6 +11,12 @@ export function SeedLawForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!url.startsWith('https://www.zakonyprolidi.cz')) {
+      toast.error('Prosím použijte pouze odkazy ze stránky zakonyprolidi.cz')
+      return
+    }
+
     setIsLoading(true)
 
     try {

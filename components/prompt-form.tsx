@@ -35,7 +35,7 @@ export function PromptForm({
   const { submitUserMessage } = useActions()
   const [_, setMessages] = useUIState<typeof AI>()
   const [placeholder, setPlaceholder] = React.useState(
-    'Zeptej se na právní otázku.'
+    'Zeptejte se na právní otázku.'
   )
   const [isLoading, setIsLoading] = React.useState(false)
 
@@ -60,12 +60,12 @@ export function PromptForm({
     const interval = setInterval(() => {
       index = (index + 1) % cyclingMessages.length
       setPlaceholder(cyclingMessages[index])
-    }, 2000)
+    }, 1500)
 
     // Cleanup function
     return () => {
       clearInterval(interval)
-      setPlaceholder('Zeptej se na právní otázku.')
+      setPlaceholder('Zeptejte se na právní otázku.')
     }
   }, [isLoading])
 
@@ -129,7 +129,7 @@ export function PromptForm({
           placeholder={placeholder}
           className={`min-h-[60px] w-full resize-none bg-transparent px-4 py-[1.3rem] focus-within:outline-none sm:text-sm ${
             isLoading
-              ? 'animate-placeholder-pulse placeholder:text-muted-foreground/70'
+              ? 'placeholder:text-slate-50'
               : 'placeholder:text-muted-foreground/50'
           }`}
           autoFocus

@@ -6,7 +6,8 @@ export default function LawPage() {
       <div className="w-full max-w-2xl rounded-lg border bg-background p-8">
         <h1 className="text-2xl font-bold mb-6">Přidat zákon</h1>
         <p className="text-zinc-500 mb-8">
-          Přidejte URL zákona z zakonyprolidi.cz, abyste ho přidali do databáze.
+          Vložte URL zákona z zakonyprolidi.cz, a naučte tak Advokátka na něj
+          odkazovat.
         </p>
         <SeedLawForm />
       </div>
