@@ -169,7 +169,10 @@ export async function submitUserMessage(content: string) {
             role: 'system',
             content: `You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
                      Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
-                     "§ {paragraph_cislo} zákona/vyhlášky č. {law_id}/{law_year} Sb." You should use the word "zákona" if the name of the law does not start with "vyhláška".`
+                     For relevant documents whose name starts with "Zákon" or similaruse the following format:
+                     "§ {paragraph_cislo} zákona/vyhlášky č. {law_id}/{law_year} Sb.".
+                     For relevant documents whose name starts with "Vyhláška" or similar use the following format:
+                     "§ {paragraph_cislo} vyhlášky č. {law_id}/{law_year} Sb."`
           },
           ...aiState.get().messages.map((message: any) => ({
             role: message.role,
