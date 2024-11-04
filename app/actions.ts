@@ -7,7 +7,6 @@ import { kv } from '@vercel/kv'
 import { auth } from '@/auth'
 import { type Chat, ContextResponse, RelevantDoc } from '@/lib/types'
 import axios from 'axios'
-export const maxDuration = 60 // This function can run for a maximum of 5 seconds
 export async function fetchRelevantDocs(query: string): Promise<RelevantDoc[]> {
   const backendUrl = process.env.BACKEND
 
