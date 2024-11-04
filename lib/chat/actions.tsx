@@ -1,7 +1,7 @@
 import 'server-only'
 
-import axios from 'axios';
-import {ContextResponse, RelevantDoc} from '@/lib/types';
+import axios from 'axios'
+import { ContextResponse, RelevantDoc } from '@/lib/types'
 import {
   createAI,
   createStreamableUI,
@@ -32,7 +32,7 @@ import { saveChat } from '@/app/actions'
 import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
-import {Dispatch, SetStateAction} from "react";
+import { Dispatch, SetStateAction } from 'react'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -108,139 +108,173 @@ export async function submitUserMessage(content: string) {
   'use server'
 
   const aiState = getMutableAIState<typeof AI>()
+  const maxRetries = 3
+  let retryCount = 0
 
-  aiState.update({
-    ...aiState.get(),
-    messages: [
-      ...aiState.get().messages,
-      {
-        id: nanoid(),
-        role: 'user',
-        content
-      }
-    ]
-  })
-
-  const backendUrl = process.env.BACKEND;
-
-  const response = await axios.post<ContextResponse>(
-      `${backendUrl}/api/v1/rag/context?n=5`,
-      { query: content },
-      {
-        auth: {
-          username: 'user1',
-          password: 'password2',
-        },
-      }
-  );
-
-  const relevantDocsText = response.data.relevant_docs
-      .map(doc => `§ ${doc.paragraph_cislo} zákona č. ${doc.law_id}/${doc.law_year} Sb.\n- ${doc.paragraph_zneni}\n`)
-      .join('\n')
-
-  const prompt = `
-    Context:
-    ${relevantDocsText}
-
-    Question:
-    ${content}
-  `
-
-  let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
-  let textNode: undefined | React.ReactNode
-
-  // Variable to accumulate the assistant's response content
-  let assistantContent = ''
-  let usedDocs: RelevantDoc[] = []
-
-  // Promise that resolves when streaming is complete
-  const streamComplete = new Promise<void>((resolve) => {
-    streamUI({
-      model: openai('gpt-4o-mini'),
-      initial: <SpinnerMessage />,
-      system: `\
-         You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
-         Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
-        "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`,
-      messages: [
-        ...aiState.get().messages.map((message: any) => ({
-          role: message.role,
-          content: message.content,
-          name: message.name
-        })),
-        {
-          role: 'user',
-          content: prompt // Using the prompt with enriched context
-        }
-      ],
-      text: ({ content, done, delta }) => {
-        if (!textStream) {
-          textStream = createStreamableValue('')
-          textNode = <BotMessage content={textStream.value} />
-        }
-
-        if (delta) {
-          assistantContent += delta // Accumulate the assistant's response
-          textStream.update(delta)
-        }
-
-        if (done) {
-          textStream.done()
-          aiState.done({
-            ...aiState.get(),
-            messages: [
-              ...aiState.get().messages,
-              {
-                id: nanoid(),
-                role: 'assistant',
-                content: assistantContent // Use the full accumulated content
-              }
-            ]
-          })
-
-          // Now that the assistant's response is complete, check for references
-          for (const doc of response.data.relevant_docs) {
-            // Create a regex pattern allowing up to 20 characters between the paragraph number and the law reference
-            const pattern = new RegExp(
-                `§\\s*${doc.paragraph_cislo}.{0,20}?zákona\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
-                'i'
-            )
-
-            if (pattern.test(assistantContent)) {
-              // Ensure no duplicates
-              if (
-                  !usedDocs.some(
-                      d =>
-                          d.paragraph_cislo === doc.paragraph_cislo &&
-                          d.law_id === doc.law_id &&
-                          d.law_year === doc.law_year
-                  )
-              ) {
-                usedDocs.push(doc)
-              }
-            }
+  while (retryCount < maxRetries) {
+    try {
+      aiState.update({
+        ...aiState.get(),
+        messages: [
+          ...aiState.get().messages,
+          {
+            id: nanoid(),
+            role: 'user',
+            content
           }
+        ]
+      })
 
-          resolve() // Resolve the promise when streaming is done
+      const backendUrl = process.env.BACKEND
+
+      const response = await axios.post<ContextResponse>(
+        `${backendUrl}/api/v1/rag/context?n=5`,
+        { query: content },
+        {
+          auth: {
+            username: 'user1',
+            password: 'password2'
+          },
+          timeout: 60000, // 30 seconds
+          timeoutErrorMessage: 'Request timed out - please try again'
         }
+      )
 
-        return textNode
-      },
-      tools: {
-        // Define tools and handlers here if required
+      const relevantDocsText = response.data.relevant_docs
+        .map(
+          doc =>
+            `§ ${doc.paragraph_cislo} zákona č. ${doc.law_id}/${doc.law_year} Sb.\n- ${doc.paragraph_zneni}\n`
+        )
+        .join('\n')
+
+      const prompt = `
+        Context:
+        ${relevantDocsText}
+
+        Question:
+        ${content}
+      `
+
+      let textStream:
+        | undefined
+        | ReturnType<typeof createStreamableValue<string>>
+      let textNode: undefined | React.ReactNode
+
+      // Variable to accumulate the assistant's response content
+      let assistantContent = ''
+      let usedDocs: RelevantDoc[] = []
+
+      // Promise that resolves when streaming is complete
+      const streamComplete = new Promise<void>(resolve => {
+        streamUI({
+          model: openai('gpt-4o-mini'),
+          initial: <SpinnerMessage />,
+          system: `\
+             You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
+             Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
+            "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`,
+          messages: [
+            ...aiState.get().messages.map((message: any) => ({
+              role: message.role,
+              content: message.content,
+              name: message.name
+            })),
+            {
+              role: 'user',
+              content: prompt // Using the prompt with enriched context
+            }
+          ],
+          text: ({ content, done, delta }) => {
+            if (!textStream) {
+              textStream = createStreamableValue('')
+              textNode = <BotMessage content={textStream.value} />
+            }
+
+            if (delta) {
+              assistantContent += delta // Accumulate the assistant's response
+              textStream.update(delta)
+            }
+
+            if (done) {
+              textStream.done()
+              aiState.done({
+                ...aiState.get(),
+                messages: [
+                  ...aiState.get().messages,
+                  {
+                    id: nanoid(),
+                    role: 'assistant',
+                    content: assistantContent // Use the full accumulated content
+                  }
+                ]
+              })
+
+              // Now that the assistant's response is complete, check for references
+              for (const doc of response.data.relevant_docs) {
+                // Create a regex pattern allowing up to 20 characters between the paragraph number and the law reference
+                const pattern = new RegExp(
+                  `§\\s*${doc.paragraph_cislo}.{0,20}?zákona\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
+                  'i'
+                )
+
+                if (pattern.test(assistantContent)) {
+                  // Ensure no duplicates
+                  if (
+                    !usedDocs.some(
+                      d =>
+                        d.paragraph_cislo === doc.paragraph_cislo &&
+                        d.law_id === doc.law_id &&
+                        d.law_year === doc.law_year
+                    )
+                  ) {
+                    usedDocs.push(doc)
+                  }
+                }
+              }
+
+              resolve() // Resolve the promise when streaming is done
+            }
+
+            return textNode
+          },
+          tools: {
+            // Define tools and handlers here if required
+          }
+        })
+      })
+
+      // Wait for the streaming to complete
+      await streamComplete
+
+      return {
+        id: nanoid(),
+        display: textNode,
+        relevantDocs: usedDocs
       }
-    })
-  })
-
-  // Wait for the streaming to complete
-  await streamComplete
-
-  return {
-    id: nanoid(),
-    display: textNode,
-    relevantDocs: usedDocs
+    } catch (error) {
+      retryCount++
+      if (retryCount === maxRetries) {
+        // If all retries failed, update the AI state with an error message
+        aiState.done({
+          ...aiState.get(),
+          messages: [
+            ...aiState.get().messages,
+            {
+              id: nanoid(),
+              role: 'assistant',
+              content:
+                'Omlouváme se, došlo k chybě při generování odpovědi. Prosím zkuste to znovu.'
+            }
+          ]
+        })
+        throw error
+      }
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000 * retryCount))
+    }
   }
 }
+
 export type AIState = {
   chatId: string
   messages: Message[]
