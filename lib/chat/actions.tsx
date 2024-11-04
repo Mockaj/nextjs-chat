@@ -202,11 +202,7 @@ export async function submitUserMessage(content: string) {
 
       const usedDocs = response.data.relevant_docs.filter(doc => {
         const pattern = new RegExp(
-          `§\\s*${doc.paragraph_cislo}.{0,20}?${
-            doc.law_nazev.toLowerCase().startsWith('vyhláška')
-              ? 'vyhlášky'
-              : 'zákona'
-          }\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
+          `§\\s*${doc.paragraph_cislo}.{0,20}?(zákona|vyhlášky)\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
           'i'
         )
         return pattern.test(assistantContent)
