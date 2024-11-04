@@ -33,6 +33,7 @@ import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 import { Dispatch, SetStateAction } from 'react'
+export const maxDuration = 60 // This function can run for a maximum of 5 seconds
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'

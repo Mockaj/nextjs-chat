@@ -5,23 +5,23 @@ import { redirect } from 'next/navigation'
 import { kv } from '@vercel/kv'
 
 import { auth } from '@/auth'
-import {type Chat, ContextResponse, RelevantDoc} from '@/lib/types'
-import axios from "axios";
-
+import { type Chat, ContextResponse, RelevantDoc } from '@/lib/types'
+import axios from 'axios'
+export const maxDuration = 60 // This function can run for a maximum of 5 seconds
 export async function fetchRelevantDocs(query: string): Promise<RelevantDoc[]> {
-  const backendUrl = process.env.BACKEND;
+  const backendUrl = process.env.BACKEND
 
   const response = await axios.post<ContextResponse>(
-      `${backendUrl}/api/v1/rag/context?n=5`,
-      { query },
-      {
-        auth: {
-          username: 'user1',
-          password: 'password2'
-        }
+    `${backendUrl}/api/v1/rag/context?n=5`,
+    { query },
+    {
+      auth: {
+        username: 'user1',
+        password: 'password2'
       }
-  );
-  return response.data.relevant_docs;
+    }
+  )
+  return response.data.relevant_docs
 }
 
 export async function getChats(userId?: string | null) {
@@ -189,8 +189,8 @@ export async function getMissingKeys() {
 }
 
 export async function seedLaw(url: string) {
-  const backendUrl = process.env.BACKEND;
-  
+  const backendUrl = process.env.BACKEND
+
   try {
     const response = await axios.post(
       `${backendUrl}/api/v1/rag/seed`,
@@ -201,16 +201,15 @@ export async function seedLaw(url: string) {
           password: 'password2'
         }
       }
-    );
-    return { success: true, data: response.data };
+    )
+    return { success: true, data: response.data }
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      return { 
-        success: false, 
-        error: error.response?.data?.detail || 'Failed to seed law' 
-      };
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to seed law'
+      }
     }
-    return { success: false, error: 'Failed to seed law' };
+    return { success: false, error: 'Failed to seed law' }
   }
 }
-
