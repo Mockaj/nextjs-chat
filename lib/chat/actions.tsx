@@ -33,7 +33,7 @@ import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 import { Dispatch, SetStateAction } from 'react'
-export const maxDuration = 60 // This function can run for a maximum of 5 seconds
+import { generateText } from 'ai'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -136,7 +136,7 @@ export async function submitUserMessage(content: string) {
             username: 'user1',
             password: 'password2'
           },
-          timeout: 60000, // 30 seconds
+          timeout: 60000,
           timeoutErrorMessage: 'Request timed out - please try again'
         }
       )
@@ -156,106 +156,57 @@ export async function submitUserMessage(content: string) {
         ${content}
       `
 
-      let textStream:
-        | undefined
-        | ReturnType<typeof createStreamableValue<string>>
-      let textNode: undefined | React.ReactNode
-
-      // Variable to accumulate the assistant's response content
-      let assistantContent = ''
-      let usedDocs: RelevantDoc[] = []
-
-      // Promise that resolves when streaming is complete
-      const streamComplete = new Promise<void>(resolve => {
-        streamUI({
-          model: openai('gpt-4o-mini'),
-          initial: <SpinnerMessage />,
-          system: `\
-             You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
-             Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
-            "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`,
-          messages: [
-            ...aiState.get().messages.map((message: any) => ({
-              role: message.role,
-              content: message.content,
-              name: message.name
-            })),
-            {
-              role: 'user',
-              content: prompt // Using the prompt with enriched context
-            }
-          ],
-          text: ({ content, done, delta }) => {
-            if (!textStream) {
-              textStream = createStreamableValue('')
-              textNode = <BotMessage content={textStream.value} />
-            }
-
-            if (delta) {
-              assistantContent += delta // Accumulate the assistant's response
-              textStream.update(delta)
-            }
-
-            if (done) {
-              textStream.done()
-              aiState.done({
-                ...aiState.get(),
-                messages: [
-                  ...aiState.get().messages,
-                  {
-                    id: nanoid(),
-                    role: 'assistant',
-                    content: assistantContent // Use the full accumulated content
-                  }
-                ]
-              })
-
-              // Now that the assistant's response is complete, check for references
-              for (const doc of response.data.relevant_docs) {
-                // Create a regex pattern allowing up to 20 characters between the paragraph number and the law reference
-                const pattern = new RegExp(
-                  `§\\s*${doc.paragraph_cislo}.{0,20}?zákona\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
-                  'i'
-                )
-
-                if (pattern.test(assistantContent)) {
-                  // Ensure no duplicates
-                  if (
-                    !usedDocs.some(
-                      d =>
-                        d.paragraph_cislo === doc.paragraph_cislo &&
-                        d.law_id === doc.law_id &&
-                        d.law_year === doc.law_year
-                    )
-                  ) {
-                    usedDocs.push(doc)
-                  }
-                }
-              }
-
-              resolve() // Resolve the promise when streaming is done
-            }
-
-            return textNode
+      const completion = await generateText({
+        model: openai('gpt-4o-mini'),
+        messages: [
+          {
+            role: 'system',
+            content: `You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
+                     Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
+                     "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`
           },
-          tools: {
-            // Define tools and handlers here if required
+          ...aiState.get().messages.map((message: any) => ({
+            role: message.role,
+            content: message.content,
+            name: message.name
+          })),
+          {
+            role: 'user',
+            content: prompt
           }
-        })
+        ]
       })
 
-      // Wait for the streaming to complete
-      await streamComplete
+      const assistantContent = completion.text || ''
+
+      aiState.done({
+        ...aiState.get(),
+        messages: [
+          ...aiState.get().messages,
+          {
+            id: nanoid(),
+            role: 'assistant',
+            content: assistantContent
+          }
+        ]
+      })
+
+      const usedDocs = response.data.relevant_docs.filter(doc => {
+        const pattern = new RegExp(
+          `§\\s*${doc.paragraph_cislo}.{0,20}?zákona\\s+č\\.\\s*${doc.law_id}\\/${doc.law_year}`,
+          'i'
+        )
+        return pattern.test(assistantContent)
+      })
 
       return {
         id: nanoid(),
-        display: textNode,
+        display: <BotMessage content={assistantContent} />,
         relevantDocs: usedDocs
       }
     } catch (error) {
       retryCount++
       if (retryCount === maxRetries) {
-        // If all retries failed, update the AI state with an error message
         aiState.done({
           ...aiState.get(),
           messages: [
@@ -270,7 +221,6 @@ export async function submitUserMessage(content: string) {
         })
         throw error
       }
-      // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, 1000 * retryCount))
     }
   }
