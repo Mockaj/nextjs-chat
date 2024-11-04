@@ -39,8 +39,9 @@ export function RelevantDocsSidebar({
           <li key={index} className="p-2 border-b">
             <div>
               <span>
-                § {doc.paragraph_cislo} zákona č. {doc.law_id}/{doc.law_year}{' '}
-                Sb.
+                § {doc.paragraph_cislo}{' '}
+                {doc.law_nazev.toLowerCase().startsWith('vyhláška') ? 'vyhlášky' : 'zákona'}{' '}
+                č. {doc.law_id}/{doc.law_year} Sb.
               </span>
             </div>
             <a
@@ -65,8 +66,9 @@ export function RelevantDocsSidebar({
                 {/* Wrap content in a scrollable container */}
                 <div className="p-6 max-h-[70vh] overflow-y-auto">
                   <DialogTitle className="text-xl font-bold mb-4 text-center">
-                    § {doc.paragraph_cislo} zákona č. {doc.law_id}/
-                    {doc.law_year} Sb.
+                    § {doc.paragraph_cislo}{' '}
+                    {doc.law_nazev.toLowerCase().startsWith('vyhláška') ? 'vyhlášky' : 'zákona'}{' '}
+                    č. {doc.law_id}/{doc.law_year} Sb.
                   </DialogTitle>
                   <DialogDescription className="mb-4 text-center">
                     {doc.law_nazev}
