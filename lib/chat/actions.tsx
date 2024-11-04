@@ -144,7 +144,13 @@ export async function submitUserMessage(content: string) {
       const relevantDocsText = response.data.relevant_docs
         .map(
           doc =>
-            `§ ${doc.paragraph_cislo} zákona č. ${doc.law_id}/${doc.law_year} Sb.\n- ${doc.paragraph_zneni}\n`
+            `§ ${doc.paragraph_cislo} ${
+              doc.law_nazev.toLowerCase().startsWith('vyhláška')
+                ? 'vyhlášky'
+                : 'zákona'
+            } č. ${doc.law_id}/${doc.law_year} Sb.\n Název: ${doc.law_nazev}\n- ${
+              doc.paragraph_zneni
+            }\n`
         )
         .join('\n')
 
@@ -163,7 +169,7 @@ export async function submitUserMessage(content: string) {
             role: 'system',
             content: `You are a legal assistant for Czech law context. Use the given context to provide accurate answers.
                      Answer strictly in Czech language. You need to source each piece of information in your answers as follows:
-                     "§ {paragraph_cislo} zákona č. {law_id}/{law_year} Sb.`
+                     "§ {paragraph_cislo} zákona/vyhlášky č. {law_id}/{law_year} Sb." You should use the word "zákona" if the name of the law does not start with "vyhláška".`
           },
           ...aiState.get().messages.map((message: any) => ({
             role: message.role,
