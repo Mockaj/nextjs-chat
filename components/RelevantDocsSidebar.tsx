@@ -78,7 +78,7 @@ export function RelevantDocsSidebar({
                   <div className="flex justify-center">
                     <DialogClose asChild>
                       <button className="mt-6 text-blue-500 underline">
-                        Close
+                        Zavřít
                       </button>
                     </DialogClose>
                   </div>
